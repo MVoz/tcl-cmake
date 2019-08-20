@@ -37,7 +37,13 @@
 # *******************************************************************
 
 # Minimum required version of CMake
-cmake_minimum_required(VERSION 3.1.3)
+cmake_minimum_required(VERSION 3.0.2)
+if(COMMAND CMAKE_POLICY)
+  if("${CMAKE_VERSION}" VERSION_GREATER 3.0.9)
+	  CMAKE_POLICY(SET CMP0053 NEW)
+	  CMAKE_POLICY(SET CMP0054 NEW)
+  endif ("${CMAKE_VERSION}" VERSION_GREATER 3.0.9)
+endif(COMMAND CMAKE_POLICY)
 
 # Set CMake project name
 project(TCL)
@@ -139,16 +145,25 @@ ADD_TCL_CFLAG(STDC_HEADERS)
 # Get the SHLIB extension from CMake
 add_definitions(-DTCL_SHLIB_EXT="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
+find_package(ZLIB REQUIRED)
+add_definitions(-DHAVE_ZLIB=1)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 #----------------------------------------------------------------------------
 # Define some platform specific flags
 
 # Windows specific flags
 IF(MSVC)
-#  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEP -Ot -Oi -fp:strict -Gs -GS -GL -MD)
-  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEP -Gs -GS -GL -MD)
+  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEP)
+  add_definitions(-DPLATFORM_WINDOWS)
+  add_definitions(-DUNICODE)
+  add_definitions(-D_UNICODE)
   add_definitions(-DTCL_PIPE_DLL="tclpip${TCL_VERSION_MAJOR}${TCL_VERSION_MINOR}.dll")
   add_definitions(-Dinline=__inline -DBUILD_tcl)
+  set(CMAKE_COMPILE_RESOURCE "rc <FLAGS> /l0x0409 /fo<OBJECT> <SOURCE>")
 ENDIF(MSVC)
 
 IF(MINGW)
@@ -254,7 +269,6 @@ SC_TCL_64BIT_FLAGS()
 OPTION(TCL_OPTIMIZED "Build optimized Tcl" ON)
 IF(TCL_OPTIMIZED)
   ADD_TCL_CFLAG(TCL_CFG_OPTIMIZED)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNDEBUG=1 -O2")
 ENDIF(TCL_OPTIMIZED)
 
 OPTION(TCL_DEBUG "Enable Debugging" ON)
@@ -1033,10 +1047,7 @@ ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "^Darwin$")
 
 add_library(tclstub STATIC ${TCL_STUB_SRCS})
 target_link_libraries(tclstub ${CMAKE_THREAD_LIBS_INIT} ${CoreFoundation_LIBRARIES} ${DL_LIBRARY})
-CHECK_C_COMPILER_FLAG(-fPIC FPIC_COMPILER_FLAG)
-if(FPIC_COMPILER_FLAG)
-  set_target_properties(tclstub PROPERTIES COMPILE_FLAGS "-fPIC")
-endif(FPIC_COMPILER_FLAG)
+
 install(TARGETS tclstub
 	RUNTIME DESTINATION ${BIN_DIR}
 	LIBRARY DESTINATION ${LIB_DIR}
